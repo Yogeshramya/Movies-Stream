@@ -28,14 +28,14 @@ export default function FavoritesPage() {
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex flex-col gap-6">
+    <div className="max-w-7xl 2xl:max-w-[1800px] mx-auto px-3.5 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 md:pb-16 w-full flex flex-col gap-6">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center">
-          <Heart className="w-5 h-5 fill-rose-400" />
+        <div className="w-10 h-10 2xl:w-12 2xl:h-12 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+          <Heart className="w-5 h-5 2xl:w-6 2xl:h-6 fill-rose-400" />
         </div>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Favorite Movies</h1>
-          <p className="text-xs text-zinc-400">Your bookmarked movies for quick access</p>
+          <h1 className="text-xl sm:text-3xl 2xl:text-4xl font-extrabold text-white">Favorite Movies</h1>
+          <p className="text-xs sm:text-sm text-zinc-400">Your bookmarked movies for quick access</p>
         </div>
       </div>
 
@@ -45,13 +45,13 @@ export default function FavoritesPage() {
           <span className="text-sm text-zinc-400">Loading favorites...</span>
         </div>
       ) : movies.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
           {movies.map((movie) => (
             <MovieCard key={movie._id} movie={movie} onUpdate={loadFavorites} />
           ))}
         </div>
       ) : (
-        <div className="glass-panel p-12 rounded-3xl border border-surface-border text-center flex flex-col items-center justify-center my-8">
+        <div className="glass-panel p-8 sm:p-12 rounded-3xl border border-surface-border text-center flex flex-col items-center justify-center my-8">
           <Heart className="w-12 h-12 text-zinc-600 mb-3" />
           <h3 className="text-lg font-bold text-white mb-1">No Favorite Movies Yet</h3>
           <p className="text-xs sm:text-sm text-zinc-400 max-w-sm mb-6">

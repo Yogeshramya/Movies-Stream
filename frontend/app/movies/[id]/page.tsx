@@ -103,9 +103,9 @@ export default function MovieDetailsPage() {
   const hasWatchHistory = movie.watchProgress && movie.watchProgress.position > 10;
 
   return (
-    <div className="flex flex-col pb-16">
+    <div className="flex flex-col pb-24 md:pb-16">
       {/* Backdrop Header */}
-      <div className="relative w-full h-[400px] sm:h-[480px] bg-slate-950 overflow-hidden border-b border-surface-border">
+      <div className="relative w-full h-[360px] sm:h-[450px] lg:h-[500px] 2xl:h-[600px] bg-slate-950 overflow-hidden border-b border-surface-border">
         {movie.thumbnailPath ? (
           <img
             src={getThumbnailUrl(movie._id)}
@@ -119,12 +119,12 @@ export default function MovieDetailsPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/40 to-transparent" />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-between py-6 z-10">
+        <div className="relative max-w-7xl 2xl:max-w-[1800px] mx-auto px-3.5 sm:px-6 lg:px-8 h-full flex flex-col justify-between py-4 sm:py-6 z-10">
           {/* Back button */}
           <div>
             <button
               onClick={() => router.back()}
-              className="inline-flex items-center gap-2 text-zinc-300 hover:text-white bg-black/40 hover:bg-black/70 px-3.5 py-2 rounded-xl backdrop-blur-md border border-white/10 text-xs sm:text-sm font-medium transition-all tv-focusable"
+              className="inline-flex items-center gap-2 text-zinc-300 hover:text-white bg-black/40 hover:bg-black/70 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl backdrop-blur-md border border-white/10 text-xs sm:text-sm font-medium transition-all tv-focusable"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Back</span>
@@ -132,32 +132,32 @@ export default function MovieDetailsPage() {
           </div>
 
           {/* Title & Play Controls */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2.5 sm:gap-3">
             <div className="flex items-center gap-2">
               <span
-                className={`text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md border ${getResolutionColor(
+                className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md border ${getResolutionColor(
                   movie.resolution
                 )}`}
               >
                 {movie.resolution}
               </span>
-              <span className="text-xs font-mono px-2 py-0.5 rounded bg-white/10 text-zinc-300 backdrop-blur-sm border border-white/10">
+              <span className="text-[10px] sm:text-xs font-mono px-2 py-0.5 rounded bg-white/10 text-zinc-300 backdrop-blur-sm border border-white/10">
                 {movie.videoCodec.toUpperCase()} • {movie.audioCodec.toUpperCase()}
               </span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight line-clamp-2">
+            <h1 className="text-2xl sm:text-4xl 2xl:text-5xl font-black text-white tracking-tight line-clamp-2">
               {movie.title}
             </h1>
 
             {/* Actions Bar */}
-            <div className="flex flex-wrap items-center gap-3 pt-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-2 sm:pt-3">
               {/* Play / Resume */}
               <Link
                 href={`/watch/${movie._id}`}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-bold text-sm shadow-xl shadow-sky-500/30 hover:brightness-110 active:scale-95 transition-all tv-focusable"
+                className="flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-bold text-xs sm:text-sm 2xl:text-base shadow-xl shadow-sky-500/30 hover:brightness-110 active:scale-95 transition-all tv-focusable"
               >
-                <Play className="w-5 h-5 fill-white" />
+                <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-white" />
                 <span>{hasWatchHistory ? 'Resume Play' : 'Play'}</span>
               </Link>
 
@@ -165,7 +165,7 @@ export default function MovieDetailsPage() {
               {hasWatchHistory && (
                 <Link
                   href={`/watch/${movie._id}?start=0`}
-                  className="flex items-center gap-2 px-4 py-3 rounded-xl bg-surface-hover hover:bg-slate-800 text-zinc-200 font-semibold text-xs sm:text-sm border border-surface-border active:scale-95 transition-all tv-focusable"
+                  className="flex items-center gap-2 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-surface-hover hover:bg-slate-800 text-zinc-200 font-semibold text-xs sm:text-sm border border-surface-border active:scale-95 transition-all tv-focusable"
                 >
                   <RotateCcw className="w-4 h-4" />
                   <span>Start from Beginning</span>
@@ -175,32 +175,32 @@ export default function MovieDetailsPage() {
               {/* Favorite Button */}
               <button
                 onClick={handleToggleFavorite}
-                className={`p-3 rounded-xl backdrop-blur-md border transition-all active:scale-95 tv-focusable ${
+                className={`p-2.5 sm:p-3 rounded-xl backdrop-blur-md border transition-all active:scale-95 tv-focusable ${
                   movie.isFavorite
                     ? 'bg-rose-500/20 text-rose-400 border-rose-500/40'
                     : 'bg-black/40 text-zinc-300 hover:text-white border-white/10 hover:bg-black/60'
                 }`}
                 title={movie.isFavorite ? 'Remove Favorite' : 'Add to Favorites'}
               >
-                <Heart className={`w-5 h-5 ${movie.isFavorite ? 'fill-rose-400' : ''}`} />
+                <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${movie.isFavorite ? 'fill-rose-400' : ''}`} />
               </button>
 
               {/* Rename Button */}
               <button
                 onClick={() => setIsEditOpen(true)}
-                className="p-3 rounded-xl bg-black/40 hover:bg-black/60 text-zinc-300 hover:text-white border border-white/10 backdrop-blur-md transition-all active:scale-95 tv-focusable"
+                className="p-2.5 sm:p-3 rounded-xl bg-black/40 hover:bg-black/60 text-zinc-300 hover:text-white border border-white/10 backdrop-blur-md transition-all active:scale-95 tv-focusable"
                 title="Rename Movie"
               >
-                <Edit3 className="w-5 h-5" />
+                <Edit3 className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
 
               {/* Delete Button */}
               <button
                 onClick={() => setIsDeleteOpen(true)}
-                className="p-3 rounded-xl bg-red-950/40 hover:bg-red-900/60 text-red-400 hover:text-red-300 border border-red-500/30 backdrop-blur-md transition-all active:scale-95 tv-focusable"
+                className="p-2.5 sm:p-3 rounded-xl bg-red-950/40 hover:bg-red-900/60 text-red-400 hover:text-red-300 border border-red-500/30 backdrop-blur-md transition-all active:scale-95 tv-focusable"
                 title="Delete Movie"
               >
-                <Trash2 className="w-5 h-5" />
+                <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
           </div>
@@ -208,7 +208,7 @@ export default function MovieDetailsPage() {
       </div>
 
       {/* Details & Specs Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-7xl 2xl:max-w-[1800px] mx-auto px-3.5 sm:px-6 lg:px-8 w-full mt-6 sm:mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         {/* Left 2 Columns: Media Specs & Streams */}
         <div className="lg:col-span-2 flex flex-col gap-6">
           {/* Watch Progress Card */}

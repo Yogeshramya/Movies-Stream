@@ -47,22 +47,22 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+    <div className="max-w-7xl 2xl:max-w-[1800px] mx-auto px-3.5 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 md:pb-16 w-full flex flex-col gap-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center">
-            <History className="w-5 h-5" />
+          <div className="w-10 h-10 2xl:w-12 2xl:h-12 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0">
+            <History className="w-5 h-5 2xl:w-6 2xl:h-6" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Continue Watching</h1>
-            <p className="text-xs text-zinc-400">Pick up right where you left off on any device</p>
+            <h1 className="text-xl sm:text-3xl 2xl:text-4xl font-extrabold text-white">Continue Watching</h1>
+            <p className="text-xs sm:text-sm text-zinc-400">Pick up right where you left off on any device</p>
           </div>
         </div>
 
         {history.length > 0 && (
           <button
             onClick={handleClearAll}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 rounded-xl transition-all"
+            className="self-start sm:self-auto flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 rounded-xl transition-all"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Clear All History</span>
@@ -76,17 +76,17 @@ export default function HistoryPage() {
           <span className="text-sm text-zinc-400">Loading history...</span>
         </div>
       ) : history.length > 0 ? (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3.5 sm:gap-4">
           {history.map((item) => {
             if (!item.movie) return null;
             return (
               <div
                 key={item._id}
-                className="glass-panel p-4 rounded-2xl border border-surface-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-sky-500/40 transition-all group"
+                className="glass-panel p-3.5 sm:p-4 rounded-2xl border border-surface-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 sm:gap-4 hover:border-sky-500/40 transition-all group"
               >
-                <div className="flex items-center gap-4 flex-1">
+                <div className="flex items-center gap-3 sm:gap-4 flex-1 w-full sm:w-auto">
                   {/* Thumbnail */}
-                  <div className="relative w-36 aspect-video rounded-xl overflow-hidden bg-slate-900 shrink-0">
+                  <div className="relative w-28 sm:w-36 2xl:w-44 aspect-video rounded-xl overflow-hidden bg-slate-900 shrink-0">
                     {item.movie.thumbnailPath ? (
                       <img
                         src={getThumbnailUrl(item.movie._id)}
@@ -108,32 +108,32 @@ export default function HistoryPage() {
                   </div>
 
                   {/* Info */}
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-0.5 sm:gap-1 flex-1 min-w-0">
                     <Link
                       href={`/movies/${item.movie._id}`}
-                      className="font-bold text-white text-base hover:text-sky-400 transition-colors line-clamp-1"
+                      className="font-bold text-white text-sm sm:text-base 2xl:text-lg hover:text-sky-400 transition-colors line-clamp-1"
                     >
                       {item.movie.title}
                     </Link>
-                    <div className="flex items-center gap-3 text-xs text-zinc-400 font-mono">
-                      <span className="text-sky-400">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[11px] sm:text-xs text-zinc-400 font-mono">
+                      <span className="text-sky-400 font-semibold">
                         {formatDurationDetailed(item.position)} / {formatDurationDetailed(item.duration)}
                       </span>
                       <span>•</span>
                       <span>{item.progressPercentage}% watched</span>
-                      <span>•</span>
-                      <span>{formatDate(item.lastWatchedAt)}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="hidden sm:inline">{formatDate(item.lastWatchedAt)}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2 self-end sm:self-center">
+                <div className="flex items-center gap-2 self-end sm:self-center w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-surface-border/50">
                   <Link
                     href={`/watch/${item.movie._id}`}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-semibold text-xs shadow-lg shadow-sky-500/20 active:scale-95 transition-all tv-focusable"
+                    className="flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-sky-500/20 active:scale-95 transition-all tv-focusable"
                   >
-                    <Play className="w-4 h-4 fill-white" />
+                    <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white" />
                     <span>Resume</span>
                   </Link>
 
@@ -150,7 +150,7 @@ export default function HistoryPage() {
           })}
         </div>
       ) : (
-        <div className="glass-panel p-12 rounded-3xl border border-surface-border text-center flex flex-col items-center justify-center my-8">
+        <div className="glass-panel p-8 sm:p-12 rounded-3xl border border-surface-border text-center flex flex-col items-center justify-center my-8">
           <Clock className="w-12 h-12 text-zinc-600 mb-3" />
           <h3 className="text-lg font-bold text-white mb-1">No Watch History</h3>
           <p className="text-xs sm:text-sm text-zinc-400 mb-6">

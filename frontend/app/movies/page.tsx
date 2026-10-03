@@ -239,29 +239,29 @@ export default function MoviesPage() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex flex-col gap-6">
+    <div className="max-w-7xl 2xl:max-w-[1800px] mx-auto px-3.5 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 md:pb-16 w-full flex flex-col gap-6">
 
       {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
 
         <div>
           <div className="flex items-center gap-2">
-            <Film className="w-6 h-6 text-sky-400" />
+            <Film className="w-5 h-5 sm:w-6 sm:h-6 text-sky-400" />
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
+            <h1 className="text-xl sm:text-3xl 2xl:text-4xl font-extrabold text-white">
               Movie Library
             </h1>
           </div>
 
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-xs sm:text-sm text-zinc-400 mt-0.5">
             {totalCount}{' '}
             {totalCount === 1 ? 'movie' : 'movies'} available
-            for local streaming
+            for streaming
           </p>
         </div>
 
         {/* Controls */}
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full md:w-auto">
 
           {/* Search */}
           <div className="relative flex-1 md:w-64">
@@ -284,7 +284,7 @@ export default function MoviesPage() {
             onChange={(e) =>
               setFilter(e.target.value)
             }
-            className="bg-surface border border-surface-border text-zinc-300 rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:border-sky-400 cursor-pointer"
+            className="bg-surface border border-surface-border text-zinc-300 rounded-xl px-2.5 sm:px-3 py-2 text-xs sm:text-sm focus:outline-none focus:border-sky-400 cursor-pointer"
           >
             <option value="all">
               All Movies
@@ -305,7 +305,7 @@ export default function MoviesPage() {
             onChange={(e) =>
               setSort(e.target.value)
             }
-            className="bg-surface border border-surface-border text-zinc-300 rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:border-sky-400 cursor-pointer"
+            className="bg-surface border border-surface-border text-zinc-300 rounded-xl px-2.5 sm:px-3 py-2 text-xs sm:text-sm focus:outline-none focus:border-sky-400 cursor-pointer"
           >
             <option value="recent">
               Recently Added
@@ -348,7 +348,7 @@ export default function MoviesPage() {
           </span>
         </div>
       ) : movies.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
 
           {movies.map((movie) => (
             <MovieCard
@@ -360,7 +360,7 @@ export default function MoviesPage() {
 
         </div>
       ) : (
-        <div className="glass-panel p-12 rounded-3xl border border-surface-border flex flex-col items-center justify-center text-center my-8">
+        <div className="glass-panel p-8 sm:p-12 rounded-3xl border border-surface-border flex flex-col items-center justify-center text-center my-8">
 
           <Film className="w-12 h-12 text-zinc-600 mb-3" />
 
