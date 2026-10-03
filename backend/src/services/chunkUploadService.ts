@@ -287,43 +287,26 @@ export class ChunkUploadService {
 
 
       // ------------------------------------------------------------
-      // Upload to StorageProvider (Local or Google Drive)
+      // Create Movie record in MongoDB & Hand off to Media Queue
+      // (Single-Pass Cloud Architecture: skips duplicate raw upload)
       // ------------------------------------------------------------
       const detectedMime = getMimeType(session.finalFilename);
-      logger.upload(
-        `[STORAGE:${storageProvider.providerName}] Uploading original video "${session.finalFilename}"...`
-      );
 
-      const uploadResult = await storageProvider.uploadFile(
-        tempAssembledPath,
-        session.finalFilename,
-        {
-          folderCategory: 'originals',
-          movieId: uploadId,
-          mimeType: detectedMime,
-        }
-      );
-
-      // Create Movie record in MongoDB
       const movie = new Movie({
         title: session.title,
         originalFilename: session.originalFilename,
         filename: session.finalFilename,
-        filePath: uploadResult.storageKey,
-        fileSize: uploadResult.size || stat.size,
+        filePath: session.finalFilename,
+        fileSize: stat.size,
         mimeType: detectedMime,
-        playbackPath: uploadResult.storageKey,
+        playbackPath: session.finalFilename,
         playbackMimeType: 'video/mp4',
         status: 'processing',
-        processingProgress: 10,
+        processingProgress: 15,
         transcodeNeeded: false,
         transcodeStatus: 'pending',
         transcodeProgress: 0,
         storageProvider: storageProvider.providerName,
-        originalStorageKey: uploadResult.storageKey,
-        originalDriveFileId: uploadResult.driveFileId,
-        playbackStorageKey: uploadResult.storageKey,
-        playbackDriveFileId: uploadResult.driveFileId,
       });
 
       await movie.save();
@@ -331,13 +314,13 @@ export class ChunkUploadService {
       emitEvent('movie:created', movie);
       emitEvent('movie:processing', {
         movieId: movie._id,
-        progress: 10,
-        message: 'Upload completed, media processing queued...',
+        progress: 15,
+        message: 'Upload assembled. Starting single-pass processing...',
       });
 
       activeSessions.delete(uploadId);
 
-      // Enqueue background media processing (passing local assembled path for worker efficiency)
+      // Enqueue background media processing directly with local assembled path
       MediaQueueService.enqueue(movie._id.toString(), tempAssembledPath);
 
       return movie;

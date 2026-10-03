@@ -586,22 +586,36 @@ export class FFmpegService {
       let localPlaybackFile = localInputPath;
 
       if (probe.isDirectPlayable) {
-        logger.ffmpeg(`[PROCESSING] Direct playback supported for "${movie.title}". No transcoding needed.`);
+        logger.ffmpeg(`[PROCESSING] Direct playback supported for "${movie.title}". Single-pass uploading to storage...`);
+        
+        const uploadRes = await storageProvider.uploadFile(
+          localInputPath,
+          movie.filename || `movie-${movieId}.mp4`,
+          {
+            folderCategory: 'playback',
+            movieId,
+            mimeType: 'video/mp4',
+          }
+        );
+
         movie.transcodeNeeded = false;
         movie.transcodeStatus = 'not_required';
         movie.transcodeProgress = 100;
-        movie.playbackPath = movie.filePath;
-        movie.playbackStorageKey = movie.originalStorageKey || movie.filePath;
-        movie.playbackDriveFileId = movie.originalDriveFileId;
+        movie.filePath = uploadRes.storageKey;
+        movie.playbackPath = uploadRes.storageKey;
+        movie.playbackStorageKey = uploadRes.storageKey;
+        movie.playbackDriveFileId = uploadRes.driveFileId;
+        movie.originalStorageKey = uploadRes.storageKey;
+        movie.originalDriveFileId = uploadRes.driveFileId;
         movie.playbackMimeType = 'video/mp4';
-        movie.processingProgress = 60;
+        movie.processingProgress = 85;
         await movie.save();
 
         emitEvent('movie:processing-progress', {
           movieId,
-          progress: 60,
+          progress: 85,
           stage: 'playback',
-          message: 'Direct playback supported',
+          message: 'Direct playback ready',
         });
       } else {
         logger.ffmpeg(`[PROCESSING] Transcoding required for "${movie.title}" to LG-compatible MP4...`);
