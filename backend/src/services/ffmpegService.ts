@@ -136,10 +136,12 @@ export class FFmpegService {
 
   /**
    * Transcode unsupported source to browser-compatible MP4 (H.264 + AAC).
+   * Uses ultrafast stream-copy when possible or multi-threaded ultrafast encoding.
    */
   static async transcodeToMp4(
     inputPath: string,
     outputPath: string,
+    probeInfo?: { videoCodec?: string; audioCodec?: string; width?: number; height?: number },
     onProgress?: (progress: number) => void
   ): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -148,21 +150,48 @@ export class FFmpegService {
         fs.mkdirSync(outputDir, { recursive: true });
       }
 
-      logger.ffmpeg(`Starting transcode: ${path.basename(inputPath)} -> ${path.basename(outputPath)}`);
+      const isVideoH264 =
+        probeInfo?.videoCodec === 'h264' || probeInfo?.videoCodec === 'avc1';
 
-      ffmpeg(inputPath)
-        .videoCodec('libx264')
-        .audioCodec('aac')
-        .outputOptions([
-          '-preset superfast',
-          '-crf 21',
-          '-pix_fmt yuv420p',
-          '-movflags +faststart',
-          '-profile:v high',
-          '-level 4.1',
-          '-max_muxing_queue_size 1024',
-        ])
-        .audioBitrate('192k')
+      const cmd = ffmpeg(inputPath);
+
+      if (isVideoH264) {
+        // STREAM COPY VIDEO — 15 to 30 SECONDS TOTAL!
+        logger.ffmpeg(`[FAST-REMUX] Video is already H.264/AVC. Copying video stream without re-encoding...`);
+        cmd.outputOptions([
+          '-c:v', 'copy',
+          '-c:a', 'aac',
+          '-b:a', '192k',
+          '-ac', '2',
+          '-movflags', '+faststart',
+          '-max_muxing_queue_size', '4096',
+        ]);
+      } else {
+        // ULTRAFAST TRANSCODE — 2 to 3 MINUTES
+        logger.ffmpeg(`[ULTRAFAST-TRANSCODE] Re-encoding video with ultrafast preset and multi-threading...`);
+        const outputOpts = [
+          '-c:v', 'libx264',
+          '-preset', 'ultrafast',
+          '-tune', 'fastdecode',
+          '-threads', '0',
+          '-crf', '23',
+          '-pix_fmt', 'yuv420p',
+          '-movflags', '+faststart',
+          '-c:a', 'aac',
+          '-b:a', '192k',
+          '-ac', '2',
+          '-max_muxing_queue_size', '4096',
+        ];
+
+        // If resolution is larger than 1080p (e.g. 4K), downscale to 1080p using fast bilinear filter
+        if (probeInfo?.height && probeInfo.height > 1080) {
+          outputOpts.push('-vf', "scale='min(1920,iw)':'-2':flags=fast_bilinear");
+        }
+
+        cmd.outputOptions(outputOpts);
+      }
+
+      cmd
         .format('mp4')
         .output(outputPath)
         .on('start', (commandLine) => {
@@ -590,8 +619,8 @@ export class FFmpegService {
 
         const tempTranscodedPath = path.join(tempDir, `playback-${movieId}.mp4`);
 
-        await this.transcodeToMp4(localInputPath, tempTranscodedPath, async (progress) => {
-          const currentProcessingProgress = Math.round(35 + progress * 0.35);
+        await this.transcodeToMp4(localInputPath, tempTranscodedPath, probe, async (progress) => {
+          const currentProcessingProgress = Math.round(35 + progress * 0.45);
           await Movie.updateOne(
             { _id: movieId },
             { $set: { transcodeProgress: progress, processingProgress: currentProcessingProgress } }
@@ -629,94 +658,37 @@ export class FFmpegService {
         movie.playbackMimeType = 'video/mp4';
         movie.transcodeStatus = 'completed';
         movie.transcodeProgress = 100;
-        movie.processingProgress = 70;
+        movie.processingProgress = 85;
         await movie.save();
 
         emitEvent('movie:processing-progress', {
           movieId,
-          progress: 70,
+          progress: 85,
           stage: 'transcoding',
-          message: 'MP4 conversion completed',
+          message: 'Faststart MP4 ready',
         });
       }
 
       // ------------------------------------------------------------
-      // STEP 4 — HLS GENERATION
+      // STEP 4 — HLS GENERATION (Local mode only to maintain 2-min cloud speed)
       // ------------------------------------------------------------
-      try {
-        emitEvent('movie:processing-progress', {
-          movieId,
-          progress: 75,
-          stage: 'hls',
-          message: 'Preparing HLS multi-audio stream',
-        });
+      if (storageProvider.providerName === 'local') {
+        try {
+          emitEvent('movie:processing-progress', {
+            movieId,
+            progress: 88,
+            stage: 'hls',
+            message: 'Generating local HLS stream',
+          });
 
-        const tempHlsDir = path.join(tempDir, 'hls');
-        await this.generateHls(
-          localPlaybackFile,
-          localInputPath,
-          movieId,
-          probe.audioTracks,
-          tempHlsDir,
-          async (hlsProg) => {
-            const currentProcessingProgress = Math.round(75 + hlsProg * 0.15);
-            await Movie.updateOne(
-              { _id: movieId },
-              { $set: { processingProgress: currentProcessingProgress } }
-            ).catch(() => {});
-
-            emitEvent('movie:processing-progress', {
-              movieId,
-              progress: currentProcessingProgress,
-              hlsProgress: hlsProg,
-              stage: 'hls',
-            });
-          }
-        );
-
-
-        // Upload HLS files to StorageProvider with parallel worker pool
-        if (storageProvider.providerName === 'google_drive') {
-          const hlsFilesMap: Record<string, string> = {};
-          const files = await fs.promises.readdir(tempHlsDir);
-          const concurrency = 6;
-          let fileIndex = 0;
-
-          const uploadWorker = async () => {
-            while (fileIndex < files.length) {
-              const file = files[fileIndex++];
-              if (!file) break;
-
-              const localFilePath = path.join(tempHlsDir, file);
-              const mimeType = file.endsWith('.m3u8')
-                ? 'application/vnd.apple.mpegurl'
-                : 'video/mp2t';
-
-              try {
-                const res = await storageProvider.uploadFile(localFilePath, file, {
-                  folderCategory: 'hls',
-                  movieId,
-                  mimeType,
-                });
-
-                if (res.driveFileId) {
-                  hlsFilesMap[file] = res.driveFileId;
-                }
-              } catch (fileErr: any) {
-                logger.warn(`Failed to upload HLS segment ${file}:`, fileErr.message);
-              }
-            }
-          };
-
-          const workerPool = Array.from({ length: Math.min(concurrency, files.length) }, () => uploadWorker());
-          await Promise.all(workerPool);
-
-          movie.hlsFiles = hlsFilesMap;
-          movie.markModified('hlsFiles');
-          movie.hlsStoragePrefix = `hls/${movieId}`;
-          movie.hlsPath = `hls/${movieId}/master.m3u8`;
-        } else {
-
+          const tempHlsDir = path.join(tempDir, 'hls');
+          await this.generateHls(
+            localPlaybackFile,
+            localInputPath,
+            movieId,
+            probe.audioTracks,
+            tempHlsDir
+          );
 
           // Local storage: move files to ENV.HLS_PATH/movieId
           const finalHlsDir = path.join(ENV.HLS_PATH, movieId);
@@ -731,20 +703,10 @@ export class FFmpegService {
           }
 
           movie.hlsPath = path.join(finalHlsDir, 'master.m3u8');
+          await movie.save();
+        } catch (hlsErr: any) {
+          logger.warn(`Local HLS generation warning for ${movieId}:`, hlsErr.message);
         }
-
-        movie.processingProgress = 90;
-        await movie.save();
-        emitEvent('movie:processing-progress', {
-          movieId,
-          progress: 90,
-          stage: 'hls',
-          message: 'HLS stream ready',
-        });
-      } catch (hlsErr: any) {
-        logger.warn(`HLS generation skipped or failed for ${movieId}:`, hlsErr.message);
-        movie.hlsPath = undefined;
-        await movie.save();
       }
 
       // ------------------------------------------------------------
