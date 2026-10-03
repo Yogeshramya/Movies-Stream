@@ -150,25 +150,49 @@ export class FFmpegService {
         fs.mkdirSync(outputDir, { recursive: true });
       }
 
-      const isVideoH264 =
-        probeInfo?.videoCodec === 'h264' || probeInfo?.videoCodec === 'avc1';
+      const codec = (probeInfo?.videoCodec || '').toLowerCase();
+      const audioCodec = (probeInfo?.audioCodec || '').toLowerCase();
+
+      // Modern TVs (LG webOS), phones & browsers natively support H.264, HEVC (H.265), VP9, AV1 in MP4
+      const isDirectStreamCopyable =
+        codec === 'h264' ||
+        codec === 'avc1' ||
+        codec === 'hevc' ||
+        codec === 'h265' ||
+        codec === 'x265' ||
+        codec === 'hev1' ||
+        codec === 'hvc1' ||
+        codec === 'vp9' ||
+        codec === 'av1';
 
       const cmd = ffmpeg(inputPath);
 
-      if (isVideoH264) {
-        // STREAM COPY VIDEO — 15 to 30 SECONDS TOTAL!
-        logger.ffmpeg(`[FAST-REMUX] Video is already H.264/AVC. Copying video stream without re-encoding...`);
-        cmd.outputOptions([
+      if (isDirectStreamCopyable) {
+        // FAST STREAM COPY VIDEO — 10 to 25 SECONDS TOTAL!
+        logger.ffmpeg(`[FAST-REMUX] Video codec '${codec}' supports direct stream-copy. Remuxing to MP4 container in seconds...`);
+        const copyOpts = [
           '-c:v', 'copy',
-          '-c:a', 'aac',
-          '-b:a', '192k',
-          '-ac', '2',
           '-movflags', '+faststart',
-          '-max_muxing_queue_size', '4096',
-        ]);
+          '-max_muxing_queue_size', '8192',
+        ];
+
+        // If audio is already AAC stereo, copy audio as well (pure 5-second remux)
+        if (audioCodec === 'aac') {
+          copyOpts.push('-c:a', 'copy');
+        } else {
+          // Convert multi-channel AC3/DTS/EAC3 to high-compatibility AAC
+          copyOpts.push('-c:a', 'aac', '-b:a', '192k', '-ac', '2');
+        }
+
+        // Add hvc1 fourcc tag so LG Smart TVs and Apple devices play HEVC natively with hardware decoding
+        if (codec.includes('hevc') || codec.includes('265') || codec.includes('hvc') || codec.includes('hev')) {
+          copyOpts.push('-tag:v', 'hvc1');
+        }
+
+        cmd.outputOptions(copyOpts);
       } else {
-        // ULTRAFAST TRANSCODE — 2 to 3 MINUTES
-        logger.ffmpeg(`[ULTRAFAST-TRANSCODE] Re-encoding video with ultrafast preset and multi-threading...`);
+        // ULTRAFAST TRANSCODE — For legacy codecs (MPEG-2, XviD, WMV)
+        logger.ffmpeg(`[ULTRAFAST-TRANSCODE] Legacy codec '${codec}' requires re-encoding with ultrafast preset...`);
         const outputOpts = [
           '-c:v', 'libx264',
           '-preset', 'ultrafast',
@@ -180,10 +204,10 @@ export class FFmpegService {
           '-c:a', 'aac',
           '-b:a', '192k',
           '-ac', '2',
-          '-max_muxing_queue_size', '4096',
+          '-max_muxing_queue_size', '8192',
         ];
 
-        // If resolution is larger than 1080p (e.g. 4K), downscale to 1080p using fast bilinear filter
+        // If resolution is larger than 1080p, scale down using fast bilinear filter
         if (probeInfo?.height && probeInfo.height > 1080) {
           outputOpts.push('-vf', "scale='min(1920,iw)':'-2':flags=fast_bilinear");
         }
@@ -242,25 +266,21 @@ export class FFmpegService {
       logger.ffmpeg(`Generating thumbnail for ${path.basename(filePath)} at ${seekSeconds}s...`);
 
       ffmpeg(filePath)
-        .screenshots({
-          timestamps: [seekSeconds],
-          filename,
-          folder: outputFolder,
-          size: '640x360',
-        })
+        .inputOptions(['-ss', String(seekSeconds)])
+        .outputOptions(['-vframes', '1', '-q:v', '2', '-s', '640x360'])
+        .output(outputDestinationPath)
         .on('end', () => resolve(outputDestinationPath))
         .on('error', (err) => {
           logger.warn(`Thumbnail failed at ${seekSeconds}s, trying 1s:`, err.message);
           ffmpeg(filePath)
-            .screenshots({
-              timestamps: [1],
-              filename,
-              folder: outputFolder,
-              size: '640x360',
-            })
+            .inputOptions(['-ss', '1'])
+            .outputOptions(['-vframes', '1', '-q:v', '2', '-s', '640x360'])
+            .output(outputDestinationPath)
             .on('end', () => resolve(outputDestinationPath))
-            .on('error', (fallbackErr) => reject(fallbackErr));
-        });
+            .on('error', (fallbackErr) => reject(fallbackErr))
+            .run();
+        })
+        .run();
     });
   }
 
