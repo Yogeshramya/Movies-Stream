@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #080a0f;
+  --foreground: #f1f5f9;
+}
+
+body {
+  color: var(--foreground);
+  background-color: var(--background);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0c0f17;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* High visibility TV focus state for LG WebOS Remote Navigation */
+.tv-focusable:focus,
+.tv-focusable:focus-visible {
+  outline: 3px solid #38bdf8 !important;
+  outline-offset: 4px !important;
+  box-shadow: 0 0 25px 5px rgba(56, 189, 248, 0.45) !important;
+  transform: scale(1.03);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 20;
+}
+
+/* Glass panel */
+.glass-panel {
+  background: rgba(18, 22, 31, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* VLC OSD Timeline Slider */
+input[type='range'] {
+  accent-color: #38bdf8;
+}
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}

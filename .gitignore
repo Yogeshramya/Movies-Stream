@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Next.js
+.next/
+out/
+
+# Backend builds
+backend/dist/
+
+# Runtime storage
+backend/storage/
+storage/
+
+# Temporary uploads
+backend/storage/temp/
+backend/storage/movies/
+backend/storage/transcoded/
+backend/storage/hls/
+backend/storage/subtitles/
+backend/storage/thumbnails/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Google credentials
+credentials/
+service-account*.json
+client_secret*.json
