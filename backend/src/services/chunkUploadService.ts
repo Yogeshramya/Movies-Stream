@@ -24,6 +24,7 @@ export interface UploadSession {
 
 // In-memory sessions store (persisted to disk metadata JSON in temp folder as well)
 const activeSessions = new Map<string, UploadSession>();
+const finalizingPromises = new Map<string, Promise<IMovie>>();
 
 export class ChunkUploadService {
   /**
@@ -183,6 +184,21 @@ export class ChunkUploadService {
    * Concatenate all chunks and finalize the movie upload to StorageProvider (Local or Google Drive).
    */
   static async finalizeUpload(uploadId: string): Promise<IMovie> {
+    if (finalizingPromises.has(uploadId)) {
+      return finalizingPromises.get(uploadId)!;
+    }
+
+    const promise = this._doFinalizeUpload(uploadId);
+    finalizingPromises.set(uploadId, promise);
+    try {
+      const result = await promise;
+      return result;
+    } finally {
+      finalizingPromises.delete(uploadId);
+    }
+  }
+
+  private static async _doFinalizeUpload(uploadId: string): Promise<IMovie> {
     const session = this.getSession(uploadId);
 
     if (!session) {

@@ -10,5 +10,6 @@ export const SOCKET_SERVER_URL =
     ? `${window.location.protocol}//${window.location.hostname}:5000`
     : 'http://localhost:5000');
 
-export const CHUNK_SIZE = 20 * 1024 * 1024; // 20 MB chunks for fast throughput
+export const CHUNK_SIZE = 8 * 1024 * 1024; // 8 MB chunks for optimal TCP window and network throughput
+export const UPLOAD_CONCURRENCY = 4; // 4 concurrent chunk upload streams in parallel
 

@@ -54,7 +54,17 @@ async function bootstrap() {
   // 6. Global Middleware
   app.use(securityHeaders);
   app.use(cors({ origin: '*' }));
-  app.use(compression());
+  app.use(
+    compression({
+      filter: (req, res) => {
+        // Skip compressing binary uploads and media streaming
+        if (req.path.startsWith('/api/upload') || req.path.includes('/stream')) {
+          return false;
+        }
+        return compression.filter(req, res);
+      },
+    })
+  );
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 

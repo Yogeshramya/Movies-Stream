@@ -25,6 +25,7 @@ import {
 import {
   API_BASE_URL,
   CHUNK_SIZE,
+  UPLOAD_CONCURRENCY,
 } from '../lib/constants';
 
 import { formatBytes } from '../lib/formatters';
@@ -837,273 +838,142 @@ export default function ChunkUploader() {
 
 
       // ========================================================
-      // 5. Upload missing chunks
+      // ========================================================
+      // 5. Upload missing chunks using Concurrent Worker Pool
       // ========================================================
 
-      let measurementStart =
-        Date.now();
+      if (!uploadId) {
+        throw new Error('Upload session ID is missing');
+      }
+      const activeUploadId: string = uploadId;
 
-      let measurementBytes =
-        uploadedBytes;
+      let measurementStart = Date.now();
+      let measurementBytes = uploadedBytes;
 
-
-      for (
-        let i = 0;
-        i < task.totalChunks;
-        i++
-      ) {
-        // ------------------------------------------------------
-        // Cancellation
-        // ------------------------------------------------------
-
-        if (
-          isCancelledRef.current
-        ) {
-          throw new Error(
-            'UPLOAD_CANCELLED'
-          );
+      // Identify missing chunks
+      const missingChunks: number[] = [];
+      for (let i = 0; i < task.totalChunks; i++) {
+        if (!uploadedChunks.includes(i)) {
+          missingChunks.push(i);
         }
+      }
 
+      let chunkQueueIndex = 0;
+      let hasFinished = false;
 
-        // ------------------------------------------------------
-        // Pause
-        // ------------------------------------------------------
-
-        if (
-          isPausedRef.current
-        ) {
-          updateTask({
-            status: 'paused',
-          });
-
-          return;
-        }
-
-
-        // ------------------------------------------------------
-        // Skip server-confirmed chunks
-        // ------------------------------------------------------
-
-        if (
-          uploadedChunks.includes(i)
-        ) {
-          continue;
-        }
-
-
-        // ------------------------------------------------------
-        // Get chunk from original File
-        // ------------------------------------------------------
-
-        const start =
-          i * CHUNK_SIZE;
-
-        const end =
-          Math.min(
-            task.file.size,
-            start + CHUNK_SIZE
-          );
-
-        const chunkBlob =
-          task.file.slice(
-            start,
-            end
-          );
-
-        const chunkSize =
-          end - start;
-
-
-        // ------------------------------------------------------
-        // Upload with automatic retry
-        // ------------------------------------------------------
-
-        const chunkStart =
-          Date.now();
-
-        let result;
-
-        try {
-          result =
-            await uploadChunkWithRetry(
-              uploadId,
-              i,
-              chunkBlob
-            );
-        } catch (error: any) {
-          if (
-            error.message ===
-            'UPLOAD_CANCELLED'
-          ) {
-            throw error;
+      const worker = async () => {
+        while (chunkQueueIndex < missingChunks.length) {
+          if (isCancelledRef.current) {
+            throw new Error('UPLOAD_CANCELLED');
           }
 
-          throw new Error(
-            `Failed to upload chunk ${i + 1
-            }/${task.totalChunks}: ${error.message
-            }`
+          if (isPausedRef.current) {
+            return;
+          }
+
+          const currentChunkIdx = missingChunks[chunkQueueIndex++];
+          if (currentChunkIdx === undefined) break;
+
+          // Double check if already uploaded
+          if (uploadedChunks.includes(currentChunkIdx)) {
+            continue;
+          }
+
+          const start = currentChunkIdx * CHUNK_SIZE;
+          const end = Math.min(task.file.size, start + CHUNK_SIZE);
+          const chunkBlob = task.file.slice(start, end);
+          const chunkSize = end - start;
+
+          const chunkStart = Date.now();
+          const result = await uploadChunkWithRetry(
+            activeUploadId,
+            currentChunkIdx,
+            chunkBlob
           );
-        }
 
+          if (!uploadedChunks.includes(currentChunkIdx)) {
+            uploadedChunks.push(currentChunkIdx);
+          }
+          uploadedChunks.sort((a, b) => a - b);
+          uploadedBytes += chunkSize;
 
-        // ------------------------------------------------------
-        // Mark chunk uploaded
-        // ------------------------------------------------------
+          // Calculate high-precision aggregate transfer speed
+          const now = Date.now();
+          const chunkDuration = Math.max(0.001, (now - chunkStart) / 1000);
+          const instantSpeed = chunkSize / chunkDuration;
 
-        if (
-          !uploadedChunks.includes(i)
-        ) {
-          uploadedChunks.push(i);
-        }
-
-        uploadedChunks.sort(
-          (a, b) => a - b
-        );
-
-        uploadedBytes +=
-          chunkSize;
-
-
-        // ------------------------------------------------------
-        // Calculate transfer speed
-        // ------------------------------------------------------
-
-        const now =
-          Date.now();
-
-        const chunkDuration =
-          Math.max(
+          const measurementDuration = Math.max(
             0.001,
-            (now - chunkStart) /
-            1000
+            (now - measurementStart) / 1000
           );
+          const measurementSpeed =
+            (uploadedBytes - measurementBytes) / measurementDuration;
 
-        const instantSpeed =
-          chunkSize /
-          chunkDuration;
+          const speed =
+            measurementSpeed > 0 ? measurementSpeed : instantSpeed;
 
+          if (measurementDuration >= 1.5) {
+            measurementStart = now;
+            measurementBytes = uploadedBytes;
+          }
 
-        const measurementDuration =
-          Math.max(
-            0.001,
-            (now -
-              measurementStart) /
-            1000
-          );
-
-        const measurementSpeed =
-          (uploadedBytes -
-            measurementBytes) /
-          measurementDuration;
-
-
-        const speed =
-          measurementSpeed > 0
-            ? measurementSpeed
-            : instantSpeed;
-
-
-        // Reset measurement window
-        if (
-          measurementDuration >=
-          2
-        ) {
-          measurementStart =
-            now;
-
-          measurementBytes =
-            uploadedBytes;
-        }
-
-
-        // ------------------------------------------------------
-        // Accurate progress
-        // ------------------------------------------------------
-
-        const percent =
-          Math.min(
+          const percent = Math.min(
             100,
-            Math.round(
-              (uploadedBytes /
-                task.file.size) *
-              100
-            )
+            Math.round((uploadedBytes / task.file.size) * 100)
           );
 
-
-        // ------------------------------------------------------
-        // Accurate ETA
-        // ------------------------------------------------------
-
-        const remainingBytes =
-          Math.max(
-            0,
-            task.file.size -
-            uploadedBytes
-          );
-
-        const eta =
-          speed > 0
-            ? Math.ceil(
-              remainingBytes /
-              speed
-            )
-            : 0;
-
-
-        // ------------------------------------------------------
-        // Update UI
-        // ------------------------------------------------------
-
-        updateTask({
-          uploadedChunks:
-            [...uploadedChunks],
-
-          uploadedBytes,
-
-          progress: percent,
-
-          speed,
-
-          timeRemaining: eta,
-
-          status:
-            result.isComplete
-              ? 'processing'
-              : 'uploading',
-
-          errorMessage:
-            undefined,
-
-          retryCount: 0,
-        });
-
-
-        // ------------------------------------------------------
-        // Final chunk
-        // ------------------------------------------------------
-
-        if (
-          result.isComplete
-        ) {
-          clearPersistedUpload();
+          const remainingBytes = Math.max(0, task.file.size - uploadedBytes);
+          const eta = speed > 0 ? Math.ceil(remainingBytes / speed) : 0;
 
           updateTask({
-            progress: 100,
-
-            uploadedBytes:
-              task.file.size,
-
-            status:
-              'completed',
-
-            timeRemaining: 0,
-
-            speed: 0,
+            uploadedChunks: [...uploadedChunks],
+            uploadedBytes,
+            progress: percent,
+            speed,
+            timeRemaining: eta,
+            status: result.isComplete ? 'processing' : 'uploading',
+            errorMessage: undefined,
+            retryCount: 0,
           });
 
-          break;
+          if (result.isComplete || uploadedChunks.length === task.totalChunks) {
+            hasFinished = true;
+          }
         }
+      };
+
+      // Launch parallel worker threads
+      const concurrencyLimit = Math.min(
+        UPLOAD_CONCURRENCY,
+        missingChunks.length || 1
+      );
+      const workerPromises: Promise<void>[] = [];
+      for (let w = 0; w < concurrencyLimit; w++) {
+        workerPromises.push(worker());
+      }
+
+      await Promise.all(workerPromises);
+
+      if (isCancelledRef.current) {
+        throw new Error('UPLOAD_CANCELLED');
+      }
+
+      if (isPausedRef.current) {
+        updateTask({ status: 'paused' });
+        return;
+      }
+
+      // Check if all chunks completed
+      if (hasFinished || uploadedChunks.length === task.totalChunks) {
+        clearPersistedUpload();
+
+        updateTask({
+          progress: 100,
+          uploadedBytes: task.file.size,
+          status: 'completed',
+          timeRemaining: 0,
+          speed: 0,
+        });
       }
 
     } catch (error: any) {
